@@ -1,34 +1,26 @@
-# Node-RED importeren
+# Publieke MQTT naar lokale Mosquitto
 
-1. Open http://iot08:1880 op hetzelfde netwerk als de Pi.
-2. Kies menu → Import → select a file en selecteer `puzzlear-flow.json`.
-3. Klik Import en daarna Deploy.
-4. Controleer dat de MQTT-node `connected` toont. De broker staat op
-   `192.168.1.46:1883`. Vul in de brokerconfiguratie je inloggegevens in als nodig.
-5. Open http://iot08:1880/puzzle-ar/status voor een verbindingstest.
+1. Open http://iot08:1880 en verwijder of disable de oude PuzzleAR HTTP-flow.
+2. Menu > Import > selecteer `puzzlear-flow.json` > Import > Deploy.
+3. Beide MQTT-nodes moeten connected tonen. De Pi heeft internet nodig.
+4. Vul bij Lokale Mosquitto zo nodig de bestaande gebruikersnaam en het wachtwoord in.
+5. Open de bijgewerkte website en vul de juiste code in.
+6. In de debug-zijbalk verschijnt het bericht; MQTT Explorer ontvangt het op `PuzzleAR`.
 
-De website controleert de geheime code zelf en stuurt alleen `message=pass`
-en een timestamp naar `POST /puzzle-ar`. De flow publiceert op `PuzzleAR` met QoS 1:
+Route:
+- Website: `wss://broker.emqx.io:8084/mqtt`
+- Publiek topic: `PuzzleAR/NTPN294/iot08/pass`
+- Node-RED ontvangt van `broker.emqx.io:1883`
+- Lokale bestemming: `192.168.1.46:1883`, topic `PuzzleAR`
 
-```json
-{"message":"pass","timestamp":"2026-10-28T13:34:56+01:00"}
-```
+Alleen `message: pass` en de Nederlandse timestamp worden verstuurd.
+De geheime code wordt alleen in AR1.html gecontroleerd. Het publieke bericht
+wordt niet retained opgeslagen. De flow onderdrukt directe dubbele afleveringen.
+De webpagina bevestigt ontvangst door de publieke broker; dat bewijst nog niet
+dat de Pi het bericht heeft doorgestuurd. Controleer hiervoor MQTT Explorer.
 
-De timestamp wordt in de browser gemaakt in Nederlandse tijd (Europe/Amsterdam, automatisch zomer-/wintertijd) en ongewijzigd doorgestuurd. HTTP 202 bevestigt acceptatie door
-de flow, niet de ontvangst door de MQTT-broker. Controleer die in MQTT Explorer.
-Verander bij een nieuwe geheime code alleen `GEHEIME_CODE` in de HTML.
+Dit is een publieke testbroker: berichten zijn voor anderen leesbaar en het topic
+is geen wachtwoord. Gebruik dit voor de workshop, niet voor beveiligde toegangscontrole.
 
-## GitHub Pages en telefoon
-
-`http://iot08:1880` is het lokale testadres. GitHub Pages gebruikt HTTPS;
-configureer daarom een HTTPS-proxy/tunnel naar de HTTP-endpoints op de Pi en
-vervang `NODE_RED_URL` in `AR1.html` door dat HTTPS-adres. Publiceer alleen
-`/puzzle-ar` en `/puzzle-ar/status`, niet de Node-RED-editor.
-De hostnaam `iot08` moet door het apparaat kunnen worden gevonden bij lokaal gebruik.
-
-De flow voegt CORS-headers toe aan antwoorden. De formulier-POST gebruikt geen
-JSON-contenttype, waardoor een gewone CORS-preflight niet nodig is. Browsers
-kunnen daarnaast toestemming vereisen voor toegang tot het lokale netwerk.
-Als je proxy een OPTIONS-preflight vereist, configureer daar CORS voor de
-GitHub Pages-origin, GET/POST/OPTIONS en Content-Type. Node-RED ondersteunt dit
-ook met `httpNodeCors` in `settings.js`.
+HTTPS op de Pi en CORS zijn voor deze route niet nodig. Publiceer de bijgewerkte
+HTML en scripts op GitHub Pages voordat je de telefoon opnieuw test.

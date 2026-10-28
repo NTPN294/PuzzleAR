@@ -560,7 +560,7 @@
         <button type="submit">Check</button>
       </div>
       <p id="code-resultaat" role="status" aria-live="polite"></p>
-      <p id="node-red-status" role="status" style="font-size:12px; margin:6px 0 0">Node-RED: verbinding controleren...</p>
+      <p id="node-red-status" role="status" style="font-size:12px; margin:6px 0 0">Publieke MQTT: verbinden...</p>
     </form>
     <div id="vraag-1" hidden>
       <strong>Vraag 1</strong>
@@ -694,27 +694,61 @@
       const GEHEIME_CODE = "4825";
       const codeInput = document.getElementById("geheime-code");
       const codeResultaat = document.getElementById("code-resultaat");
-      // Voor GitHub Pages: vervang dit door het HTTPS-adres van je Pi.
-      const NODE_RED_URL = "http://iot08:1880";
+      const MQTT_URL = "wss://broker.emqx.io:8084/mqtt";
+      const MQTT_TOPIC = "PuzzleAR/NTPN294/iot08/pass";
       const nodeRedStatus = document.getElementById("node-red-status");
       let verstuurd = false;
       let versturen = false;
-      function nodeRedBereikbaarViaHttps() {
-        if (location.protocol === "https:" && new URL(NODE_RED_URL).protocol !== "https:") {
-          nodeRedStatus.textContent = "Node-RED: stel een HTTPS-adres in voor gebruik vanaf deze HTTPS-website.";
-          return false;
-        }
-        return true;
-      }
-      async function controleerNodeRed() {
-        if (!nodeRedBereikbaarViaHttps()) return;
+      let wachtendBericht = null;
+      let mqttClient = null;
+      let retryTimer = null;
+      function verbindMqtt() {
         try {
-          const response = await fetch(NODE_RED_URL + "/puzzle-ar/status", {signal: AbortSignal.timeout(5000)});
-          if (!response.ok) throw new Error();
-          const status = await response.json();
-          nodeRedStatus.textContent = status.mqttConnected ? "Node-RED en MQTT verbonden" : "Node-RED bereikbaar; MQTT nog niet verbonden";
-        } catch {
-          nodeRedStatus.textContent = "Node-RED niet bereikbaar. Controleer iot08:1880 en of de flow is gedeployed.";
+          if (!mqttClient) {
+            mqttClient = new Paho.MQTT.Client(MQTT_URL, "PuzzleAR_" + Math.random().toString(16).slice(2, 10));
+            mqttClient.onConnectionLost = () => {
+              nodeRedStatus.textContent = "MQTT: verbinding weg, opnieuw verbinden...";
+              clearTimeout(retryTimer);
+              retryTimer = setTimeout(verbindMqtt, 3000);
+            };
+            mqttClient.onMessageDelivered = () => {
+              verstuurd = true;
+              versturen = false;
+              wachtendBericht = null;
+              nodeRedStatus.textContent = "Pass ontvangen door publieke broker; Node-RED stuurt door naar lokale MQTT.";
+            };
+          }
+          mqttClient.connect({
+            timeout: 8,
+            onSuccess: () => {
+              nodeRedStatus.textContent = "Publieke MQTT verbonden";
+              publiceerAntwoord();
+            },
+            onFailure: () => {
+              nodeRedStatus.textContent = "Publieke MQTT niet bereikbaar. Opnieuw proberen...";
+              clearTimeout(retryTimer);
+              retryTimer = setTimeout(verbindMqtt, 5000);
+            },
+          });
+        } catch (error) {
+          nodeRedStatus.textContent = "MQTT: " + error.message;
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(verbindMqtt, 5000);
+        }
+      }
+      function publiceerAntwoord() {
+        if (!wachtendBericht || versturen || verstuurd || !mqttClient || !mqttClient.isConnected()) return;
+        try {
+          versturen = true;
+          const bericht = new Paho.MQTT.Message(JSON.stringify(wachtendBericht));
+          bericht.destinationName = MQTT_TOPIC;
+          bericht.qos = 1;
+          bericht.retained = false;
+          nodeRedStatus.textContent = "Pass versturen naar publieke MQTT...";
+          mqttClient.send(bericht);
+        } catch (error) {
+          versturen = false;
+          nodeRedStatus.textContent = "Niet verstuurd. Klik opnieuw op Check. " + error.message;
         }
       }
       function nederlandseTimestamp(datum = new Date()) {
@@ -727,28 +761,13 @@
         const offset = delen.timeZoneName.replace("GMT", "") || "+00:00";
         return `${delen.year}-${delen.month}-${delen.day}T${delen.hour}:${delen.minute}:${delen.second}${offset}`;
       }
-      async function stuurNaarNodeRed() {
-        if (verstuurd || versturen || !nodeRedBereikbaarViaHttps()) return;
-        versturen = true;
-        nodeRedStatus.textContent = "Antwoord naar Node-RED sturen...";
-        try {
-          // Formulierdata voorkomt een JSON-CORS-preflight voor dit verzoek.
-          const response = await fetch(NODE_RED_URL + "/puzzle-ar", {
-            method: "POST",
-            body: new URLSearchParams({message: "pass", timestamp: nederlandseTimestamp()}),
-            signal: AbortSignal.timeout(8000),
-          });
-          const result = await response.json();
-          if (!response.ok || !result.ok) throw new Error(result.error || "Versturen mislukt");
-          verstuurd = true;
-          nodeRedStatus.textContent = "Node-RED heeft je antwoord geaccepteerd en aan MQTT doorgegeven.";
-        } catch (error) {
-          nodeRedStatus.textContent = "Niet verstuurd: " + error.message + ". Klik opnieuw op Check.";
-        } finally {
-          versturen = false;
-        }
+      function stuurNaarNodeRed() {
+        if (verstuurd || versturen) return;
+        if (!wachtendBericht) wachtendBericht = {message: "pass", timestamp: nederlandseTimestamp()};
+        if (mqttClient && mqttClient.isConnected()) publiceerAntwoord();
+        else nodeRedStatus.textContent = "Antwoord wacht op verbinding met de publieke broker.";
       }
-      controleerNodeRed();
+      verbindMqtt();
       document.getElementById("code-formulier").addEventListener("submit", (event) => {
         event.preventDefault();
         const code = codeInput.value.trim();

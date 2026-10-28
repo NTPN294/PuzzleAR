@@ -1,151 +1,106 @@
 [
   {
-    "id": "puzzlear-tab",
+    "id": "puzzlear-relay-v2",
     "type": "tab",
-    "label": "PuzzleAR naar MQTT",
+    "label": "PuzzleAR publieke MQTT naar lokaal",
     "disabled": false,
-    "info": "POST /puzzle-ar: ontvangt message=pass en timestamp van de website en geeft ze door aan MQTT. De geheime code wordt alleen in de HTML gecontroleerd."
+    "info": "Website -> EMQX -> deze flow -> Mosquitto. Geen HTTP of CORS nodig."
   },
   {
-    "id": "puzzlear-in",
-    "type": "http in",
-    "z": "puzzlear-tab",
-    "name": "Antwoord van website",
-    "x": 130,
-    "y": 100,
-    "wires": [
-      [
-        "puzzlear-validate"
-      ]
-    ],
-    "url": "/puzzle-ar",
-    "method": "post",
-    "upload": false,
-    "swaggerDoc": ""
-  },
-  {
-    "id": "puzzlear-validate",
-    "type": "function",
-    "z": "puzzlear-tab",
-    "name": "Pass + timestamp naar MQTT",
-    "x": 400,
-    "y": 100,
-    "wires": [
-      [
-        "puzzlear-mqtt"
-      ],
-      [
-        "puzzlear-response"
-      ]
-    ],
-    "func": "msg.headers = {\"Access-Control-Allow-Origin\":\"*\", \"Content-Type\":\"application/json\", \"Cache-Control\":\"no-store\"};\nconst data = msg.payload;\nif (!data || data.message !== \"pass\" || typeof data.timestamp !== \"string\" || !Number.isFinite(Date.parse(data.timestamp))) {\n    msg.statusCode = 400;\n    msg.payload = {ok:false, error:\"Verwacht message pass met een geldige timestamp.\"};\n    return [null, msg];\n}\nif (flow.get(\"puzzlearMqttConnected\") !== true) {\n    msg.statusCode = 503;\n    msg.payload = {ok:false, error:\"MQTT-broker nog niet verbonden. Probeer opnieuw.\"};\n    return [null, msg];\n}\nconst bericht = {\n    topic: \"PuzzleAR\",\n    payload: JSON.stringify({message:data.message, timestamp:data.timestamp}),\n    qos: \"1\",\n    retain: false\n};\nmsg.statusCode = 202;\nmsg.payload = {ok:true, status:\"accepted\"};\nreturn [bericht, msg];",
-    "outputs": 2,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": []
-  },
-  {
-    "id": "puzzlear-mqtt",
-    "type": "mqtt out",
-    "z": "puzzlear-tab",
-    "name": "PuzzleAR -> Mosquitto",
-    "x": 720,
-    "y": 70,
-    "wires": [],
-    "topic": "PuzzleAR",
+    "id": "puzzlear-public-in",
+    "type": "mqtt in",
+    "z": "puzzlear-relay-v2",
+    "name": "Pass van GitHub Pages",
+    "topic": "PuzzleAR/NTPN294/iot08/pass",
     "qos": "1",
-    "retain": "false",
-    "respTopic": "",
-    "contentType": "",
-    "userProps": "",
-    "correl": "",
-    "expiry": "",
-    "broker": "puzzlear-broker"
-  },
-  {
-    "id": "puzzlear-response",
-    "type": "http response",
-    "z": "puzzlear-tab",
-    "name": "Antwoord + CORS",
-    "x": 730,
-    "y": 140,
-    "wires": [],
-    "statusCode": "",
-    "headers": {}
-  },
-  {
-    "id": "puzzlear-health",
-    "type": "http in",
-    "z": "puzzlear-tab",
-    "name": "Website verbindingstest",
-    "x": 140,
-    "y": 240,
+    "datatype": "auto-detect",
+    "broker": "puzzlear-public-v2",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 180,
+    "y": 100,
     "wires": [
       [
-        "puzzlear-health-fn"
+        "puzzlear-relay-validate"
       ]
-    ],
-    "url": "/puzzle-ar/status",
-    "method": "get",
-    "upload": false,
-    "swaggerDoc": ""
+    ]
   },
   {
-    "id": "puzzlear-health-fn",
+    "id": "puzzlear-relay-validate",
     "type": "function",
-    "z": "puzzlear-tab",
-    "name": "Status",
-    "x": 410,
-    "y": 240,
-    "wires": [
-      [
-        "puzzlear-response"
-      ]
-    ],
-    "func": "msg.headers = {\"Access-Control-Allow-Origin\":\"*\", \"Content-Type\":\"application/json\", \"Cache-Control\":\"no-store\"};\nmsg.payload = {ok:true, mqttConnected:flow.get(\"puzzlearMqttConnected\") === true};\nreturn msg;",
+    "z": "puzzlear-relay-v2",
+    "name": "Controleer bericht en behoud timestamp",
+    "func": "// Geen oude retained berichten opnieuw doorsturen.\nif (msg.retain) return null;\nlet data = msg.payload;\ntry { if (typeof data === \"string\") data = JSON.parse(data); }\ncatch { return null; }\nif (!data || data.message !== \"pass\" || typeof data.timestamp !== \"string\" || !Number.isFinite(Date.parse(data.timestamp))) return null;\n// QoS 1 kan hetzelfde bericht opnieuw afleveren.\nconst sleutel = data.message + \":\" + data.timestamp;\nif (context.get(\"laatsteBericht\") === sleutel) return null;\ncontext.set(\"laatsteBericht\", sleutel);\nmsg.topic = \"PuzzleAR\";\nmsg.payload = JSON.stringify({message:\"pass\", timestamp:data.timestamp});\nmsg.qos = 1;\nmsg.retain = false;\nreturn msg;",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
     "initialize": "",
     "finalize": "",
-    "libs": []
-  },
-  {
-    "id": "puzzlear-status",
-    "type": "status",
-    "z": "puzzlear-tab",
-    "name": "MQTT verbinding",
-    "x": 140,
-    "y": 340,
+    "libs": [],
+    "x": 470,
+    "y": 100,
     "wires": [
       [
-        "puzzlear-status-fn"
+        "puzzlear-local-out",
+        "puzzlear-relay-debug"
       ]
-    ],
-    "scope": [
-      "puzzlear-mqtt"
     ]
   },
   {
-    "id": "puzzlear-status-fn",
-    "type": "function",
-    "z": "puzzlear-tab",
-    "name": "Bewaar MQTT status",
-    "x": 410,
-    "y": 340,
-    "wires": [],
-    "func": "flow.set(\"puzzlearMqttConnected\", msg.status.fill === \"green\");\nreturn null;",
-    "outputs": 0,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "flow.set(\"puzzlearMqttConnected\", false);",
-    "finalize": "",
-    "libs": []
+    "id": "puzzlear-local-out",
+    "type": "mqtt out",
+    "z": "puzzlear-relay-v2",
+    "name": "Lokale MQTT: PuzzleAR",
+    "topic": "PuzzleAR",
+    "qos": "1",
+    "retain": "false",
+    "broker": "puzzlear-local-v2",
+    "x": 800,
+    "y": 80,
+    "wires": []
   },
   {
-    "id": "puzzlear-broker",
+    "id": "puzzlear-relay-debug",
+    "type": "debug",
+    "z": "puzzlear-relay-v2",
+    "name": "Doorgestuurd pass + timestamp",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 820,
+    "y": 150,
+    "wires": []
+  },
+  {
+    "id": "puzzlear-public-v2",
+    "type": "mqtt-broker",
+    "name": "Publieke EMQX",
+    "broker": "broker.emqx.io",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": ""
+  },
+  {
+    "id": "puzzlear-local-v2",
     "type": "mqtt-broker",
     "name": "Lokale Mosquitto",
     "broker": "192.168.1.46",
