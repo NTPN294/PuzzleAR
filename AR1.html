@@ -124,7 +124,15 @@
           this.hud = document.getElementById("vraag-2");
           this.status = document.getElementById("kleur-status");
           this.buttons = [...this.hud.querySelectorAll("[data-kleur]")];
-          this.volgorde = ["blauw", "rood", "geel", "groen"];
+          this.rondes = [
+            ["blauw", "rood", "geel", "groen"],
+            ["groen", "geel", "blauw", "rood"],
+            ["geel", "blauw", "groen", "rood"],
+          ];
+          this.ronde = 0;
+          this.volgorde = this.rondes[this.ronde];
+          this.rondeLabel = document.getElementById("krokodil-ronde");
+          this.opnieuwKnop = this.hud.querySelector(".opnieuw");
           this.kleuren = { rood: "#ef4444", blauw: "#3b82f6", groen: "#22c55e", geel: "#facc15" };
           this.actief = false;
           this.bommen = [];
@@ -165,11 +173,19 @@
             this.bommen.push(bom);
           });
           this.reset = () => {
+            this.volgorde = this.rondes[this.ronde];
+            this.rondeLabel.textContent = `Ronde ${this.ronde + 1} van ${this.rondes.length}`;
+            this.volgendeRonde = false;
+            this.opnieuwKnop.textContent = "Bommen opnieuw bekijken";
+            this.opnieuwKnop.disabled = false;
             this.elapsed = 0;
             this.invoer = [];
             this.klaar = false;
             this.opgelost = false;
-            this.bommen.forEach(bom => bom.setAttribute("visible", false));
+            this.bommen.forEach((bom, i) => {
+              bom.setAttribute("visible", false);
+              [...bom.children].forEach(deel => deel.setAttribute("color", this.kleuren[this.volgorde[i]]));
+            });
             this.buttons.forEach(btn => { btn.disabled = true; });
             this.status.textContent = "Kijk naar de vier bommen en onthoud de kleurvolgorde.";
           };
@@ -181,21 +197,34 @@
               return;
             }
             if (this.invoer.every((kleur, i) => kleur === this.volgorde[i])) {
-              this.opgelost = true;
-              this.status.textContent = "Goed! Het nummer is 8";
+              if (this.ronde === this.rondes.length - 1) {
+                this.opgelost = true;
+                this.status.textContent = "Alle drie rondes goed! Het nummer is 8";
+                this.opnieuwKnop.disabled = true;
+                this.opnieuwKnop.textContent = "Alle rondes voltooid!";
+              } else {
+                this.volgendeRonde = true;
+                this.klaar = false;
+                this.status.textContent = "Goed onthouden! Klaar voor de volgende ronde?";
+                this.opnieuwKnop.textContent = "Volgende ronde";
+              }
               this.buttons.forEach(button => { button.disabled = true; });
             } else {
               this.invoer = [];
               this.status.textContent = "Nog niet goed. Kies opnieuw vier kleuren of bekijk de bommen opnieuw.";
             }
           }));
-          this.hud.querySelector(".opnieuw").addEventListener("click", this.reset);
+          this.opnieuwKnop.addEventListener("click", () => {
+            if (!this.actief || this.opgelost) return;
+            if (this.volgendeRonde) this.ronde++;
+            this.reset();
+          });
           this.el.addEventListener("markerFound", () => { this.actief = true; this.hud.hidden = false; });
           this.el.addEventListener("markerLost", () => { this.actief = false; this.hud.hidden = true; });
           this.reset();
         },
         tick: function (time, delta) {
-          if (!this.actief || this.klaar) return;
+          if (!this.actief || this.klaar || this.volgendeRonde) return;
           this.elapsed += Math.min(delta, 100);
           this.vliegtuig.object3D.position.y = 1.2 + Math.sin(this.elapsed / 400) * 0.035;
           this.bommen.forEach((bom, i) => {
@@ -541,6 +570,7 @@
     <button id="sla-knop" type="button" aria-label="Sla op het lucky block" hidden>SLA!</button>
     <div id="vraag-2" hidden>
       <strong>Vraag 2: Bombardino Crocodilo</strong>
+      <div id="krokodil-ronde" style="font-size: 13px; color: #ffd28a">Ronde 1 van 3</div>
       <p id="kleur-status" role="status" aria-live="polite"></p>
       <div class="kleur-keuzes">
         <button type="button" data-kleur="rood" style="background: #ef4444" aria-label="Rood">Rood</button>
@@ -567,7 +597,7 @@
     </div>
     <p id="cat-feedback" class="feedback" role="status" aria-live="polite">Even wachten, de kat komt eraan...</p>
     <div class="puzzle-actions">
-      <button type="button" id="cat-check" class="big-button" disabled>Is mijn burger goed? <span aria-hidden="true">✓</span></button>
+      <button type="button" id="cat-check" class="big-button" disabled>Check burger <span aria-hidden="true">✓</span></button>
       <button type="button" id="cat-next" class="big-button" hidden>Volgende burger <span aria-hidden="true">→</span></button>
     </div>
     <div id="cat-reward" class="reward-box" hidden><strong>Hoera! Alles gelukt! 🎉</strong><p id="cat-code"></p></div>
@@ -593,7 +623,7 @@
         <button type="button" id="clear-dance" class="quiet-button" disabled>↶ Wissen</button>
         <button type="button" id="replay-dance" class="quiet-button" disabled>▶ Nog eens kijken</button>
       </div>
-      <div class="puzzle-actions"><button type="submit" id="check-dance" class="big-button" disabled>Dit is mijn dans! <span aria-hidden="true">✓</span></button></div>
+      <div class="puzzle-actions"><button type="submit" id="check-dance" class="big-button" disabled>Check dans <span aria-hidden="true">✓</span></button></div>
     </form>
     <div id="dance-reward" class="reward-box" hidden><strong>Goed gedaan! 🎉</strong><p id="dance-code"></p></div>
   </section>

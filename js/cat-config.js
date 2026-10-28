@@ -1,5 +1,5 @@
 window.CAT_CONFIG = {
-  launchCode: "5", // Het echte stukje van de lanceercode voor marker 4.
+  launchCode: "5", // Het geheime getal voor marker 4.
   orders: [
     {
       riddle: "Op mijn burger mag van alles!\nMaar kaas lust ik niet.\nLaat dat gele plakje dus weg.",

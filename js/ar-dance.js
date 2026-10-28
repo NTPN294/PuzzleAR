@@ -291,7 +291,7 @@
         enableAnswer(true);
         const remaining = settings.order.length - moves.length;
         status.textContent = remaining ? "Nog " + remaining + (remaining === 1 ? " beweging kiezen." : " bewegingen kiezen.")
-          : "Klaar? Tik op 'Dit is mijn dans!'";
+          : "Klaar? Tik op 'Check dans'";
       });
     });
     clear.addEventListener("click", () => {
@@ -318,8 +318,8 @@
         status.textContent = "Hoera! Je hebt mijn dans onthouden!";
         document.getElementById("dance-reward").hidden = false;
         document.getElementById("dance-code").textContent = settings.launchCode
-          ? "Jouw stukje van de lanceercode: " + settings.launchCode
-          : "Vraag de spelleider om jouw stukje van de lanceercode.";
+          ? "Mijn geheime code is: " + settings.launchCode
+          : "Vraag de spelleider om het geheime getal.";
       } else {
         state("error", "Nog een keer!");
         status.textContent = "Bijna! Tik op 'Wissen' en probeer het nog eens. Je mag ook nog eens kijken!";

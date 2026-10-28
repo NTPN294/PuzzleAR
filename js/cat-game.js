@@ -120,8 +120,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("cat-reward").hidden = !won;
     if (won) {
       document.getElementById("cat-code").textContent = config.launchCode
-        ? "Jouw stukje van de lanceercode: " + config.launchCode
-        : "Alle burgers zijn klaar! Vraag de spelleider om jouw stukje van de lanceercode.";
+        ? "Mijn geheime code is: " + config.launchCode
+        : "Alle burgers zijn klaar! Vraag de spelleider om het geheime getal.";
     }
   }
 
@@ -174,7 +174,7 @@ document.addEventListener("DOMContentLoaded", function () {
     feedbackState = "answer";
     const id = button.dataset.food;
     if (selected.has(id)) selected.delete(id); else selected.add(id);
-    feedback.textContent = "Kijk naar je burger. Klaar? Tik op 'Is mijn burger goed?'";
+    feedback.textContent = "Kijk naar je burger. Klaar? Tik op 'Check burger'";
     render();
   }));
   check.addEventListener("click", () => {
