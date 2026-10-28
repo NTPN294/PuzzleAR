@@ -8,6 +8,18 @@
     <script src="https://aframe.io/releases/1.0.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/jeromeetienne/AR.js/2.1.4/aframe/build/aframe-ar.js"></script>
     <script src="js/mqttws31.min.js"></script>
+    <script>window.THREE = AFRAME.THREE;</script>
+    <script src="js/vendor/inflate.min.js"></script>
+    <script src="js/vendor/FBXLoader.js"></script>
+    <script src="js/fbx-model.js"></script>
+    <script src="js/tralalero-config.js"></script>
+    <script src="js/ar-celebration.js"></script>
+    <script src="js/ar-dance.js"></script>
+    <script src="js/cat-config.js"></script>
+    <script src="js/cat-game.js"></script>
+    <script src="js/station-ui.js"></script>
+    <link rel="stylesheet" href="css/partner-puzzles.css" />
+
     <script>
       // Het model bestaat alleen uit eenvoudige vormen, zonder model-download.
       AFRAME.registerComponent("houten-sahur", {
@@ -538,6 +550,53 @@
       </div>
       <button type="button" class="opnieuw">Bommen opnieuw bekijken</button>
     </div>
+    <div id="scan-hint" hidden></div>
+<section id="cat-puzzle" class="puzzle-card cat-card" hidden aria-labelledby="cat-title" lang="nl" data-phase="loading">
+    <header class="puzzle-heading">
+      <span class="character-badge" aria-hidden="true">🐱</span>
+      <div><span class="puzzle-eyebrow" id="cat-round">Burger 1 van 3</span><h2 id="cat-title">Maak mijn burger!</h2></div>
+      <ol id="cat-progress" class="round-dots" aria-label="Voortgang"><li>1</li><li>2</li><li>3</li></ol>
+    </header>
+    <p class="puzzle-instruction">Broodje en vlees zitten er al op. Wat mag erbij?</p>
+    <p id="cat-riddle" class="riddle-bubble"></p>
+    <div class="cat-foods" aria-label="Kies wat op de burger mag">
+      <button type="button" data-food="kaas" aria-pressed="false" disabled><span aria-hidden="true">🧀</span>Kaas</button>
+      <button type="button" data-food="sla" aria-pressed="false" disabled><span aria-hidden="true">🥬</span>Sla</button>
+      <button type="button" data-food="tomaat" aria-pressed="false" disabled><span aria-hidden="true">🍅</span>Tomaat</button>
+      <button type="button" data-food="ui" aria-pressed="false" disabled><span aria-hidden="true">🧅</span>Ui</button>
+    </div>
+    <p id="cat-feedback" class="feedback" role="status" aria-live="polite">Even wachten, de kat komt eraan...</p>
+    <div class="puzzle-actions">
+      <button type="button" id="cat-check" class="big-button" disabled>Is mijn burger goed? <span aria-hidden="true">✓</span></button>
+      <button type="button" id="cat-next" class="big-button" hidden>Volgende burger <span aria-hidden="true">→</span></button>
+    </div>
+    <div id="cat-reward" class="reward-box" hidden><strong>Hoera! Alles gelukt! 🎉</strong><p id="cat-code"></p></div>
+  </section>
+<section id="dance-puzzle" class="puzzle-card shark-card" hidden aria-labelledby="dance-question" lang="nl" data-phase="loading">
+    <header class="puzzle-heading">
+      <span class="character-badge" aria-hidden="true">🦈</span>
+      <div><span class="puzzle-eyebrow">De dans van de haai</span><h2 id="dance-question">Onthoud mijn dans!</h2></div>
+      <span id="dance-phase" class="phase-badge">Even wachten</span>
+    </header>
+    <p class="puzzle-instruction">Kijk goed naar de haai. Tik daarna de bewegingen in dezelfde volgorde.</p>
+    <p id="dance-status" class="feedback" role="status" aria-live="polite">Even wachten, de haai komt eraan...</p>
+    <form id="dance-form">
+      <input id="dance-order" type="hidden" disabled>
+      <div class="answer-heading"><span>Jouw dans</span><span id="dance-count">0 van 4</span></div>
+      <ol id="dance-answer" class="dance-answer" aria-label="Jouw gekozen bewegingen"></ol>
+      <div class="dance-moves" aria-label="Kies een beweging">
+        <button type="button" data-dance-move="left" disabled><span aria-hidden="true">⬅</span>Links</button>
+        <button type="button" data-dance-move="right" disabled><span aria-hidden="true">➡</span>Rechts</button>
+        <button type="button" data-dance-move="jump" disabled><span aria-hidden="true">⬆</span>Spring</button>
+      </div>
+      <div class="small-actions">
+        <button type="button" id="clear-dance" class="quiet-button" disabled>↶ Wissen</button>
+        <button type="button" id="replay-dance" class="quiet-button" disabled>▶ Nog eens kijken</button>
+      </div>
+      <div class="puzzle-actions"><button type="submit" id="check-dance" class="big-button" disabled>Dit is mijn dans! <span aria-hidden="true">✓</span></button></div>
+    </form>
+    <div id="dance-reward" class="reward-box" hidden><strong>Goed gedaan! 🎉</strong><p id="dance-code"></p></div>
+  </section>
     <a-scene
       embedded
       arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3; debugUIEnabled: false;"
@@ -559,11 +618,50 @@
 
       <a-marker id="marker-2" type="barcode" value="2" emitevents="true" bombardino></a-marker>
 
+<a-marker id="tralalero-marker" type="barcode" value="3" emitevents="true">
+      <a-entity id="tralalero-dancer" tralalero-dancer>
+        <a-entity id="tralalero-model" fit-tralalero></a-entity>
+        <a-entity id="shark-effects" ar-celebration rotation="-75 0 0" scale="1.35 1.35 1.35"></a-entity>
+      </a-entity>
+    </a-marker>
+<a-marker id="cat-marker" type="barcode" value="4" emitevents="true">
+  <a-entity rotation="-65 0 0">
+    <a-entity id="cat-model" macdonald-model cat-reaction></a-entity>
+    <a-entity id="cat-effects" ar-celebration scale="1.1 1.1 1.1"></a-entity>
+    <a-entity id="cat-burger" position="1.05 .65 .15" scale="1.5 1.5 1.5">
+      <a-sphere position="0 .065 0" radius=".25" scale="1 .28 1" color="#d99343"></a-sphere>
+      <a-cylinder position="0 .145 0" radius=".235" height=".08" color="#673126"></a-cylinder>
+      <a-entity id="ingredient-kaas" visible="false">
+        <a-box width=".43" height=".025" depth=".43" rotation="0 18 0" color="#ffd34d"></a-box>
+      </a-entity>
+      <a-entity id="ingredient-sla" visible="false">
+        <a-cylinder radius=".26" height=".025" segments-radial="10" color="#73b847"></a-cylinder>
+        <a-sphere position=".18 0 .12" radius=".09" scale="1 .2 1" color="#8bd05a"></a-sphere>
+        <a-sphere position="-.17 0 -.12" radius=".09" scale="1 .2 1" color="#8bd05a"></a-sphere>
+      </a-entity>
+      <a-entity id="ingredient-tomaat" visible="false">
+        <a-cylinder radius=".22" height=".045" color="#e74636"></a-cylinder>
+        <a-cylinder position="0 .024 0" radius=".15" height=".003" color="#f3775b"></a-cylinder>
+      </a-entity>
+      <a-entity id="ingredient-ui" visible="false">
+        <a-torus radius=".15" radius-tubular=".018" segments-tubular="24" rotation="90 0 0" color="#dfb3dc"></a-torus>
+        <a-torus radius=".095" radius-tubular=".014" segments-tubular="24" rotation="90 0 0" color="#fff0f7"></a-torus>
+      </a-entity>
+      <a-entity id="burger-top" position="0 .285 0">
+        <a-sphere radius=".25" scale="1 .45 1" color="#e7a34c"></a-sphere>
+        <a-sphere position=".07 .1 .025" radius=".014" scale=".6 .3 1" color="#fff0b0"></a-sphere>
+        <a-sphere position="-.06 .1 -.02" radius=".014" scale=".6 .3 1" color="#fff0b0"></a-sphere>
+        <a-sphere position=".01 .095 .11" radius=".014" scale=".6 .3 1" color="#fff0b0"></a-sphere>
+      </a-entity>
+      <a-text value="Jouw burger" align="center" position="0 -.16 .2" color="#ffffff" width="1.9"></a-text>
+    </a-entity>
+  </a-entity>
+</a-marker>
       <a-entity camera></a-entity>
     </a-scene>
     <script>
-      // Getallen van marker 1 en 2, in markervolgorde. Breid uit bij nieuwe vragen.
-      const GEHEIME_CODE = "48";
+      // Getallen van marker 1 t/m 4, in markervolgorde.
+      const GEHEIME_CODE = "4825";
       const codeInput = document.getElementById("geheime-code");
       const codeResultaat = document.getElementById("code-resultaat");
       // Voor GitHub Pages: vervang dit door het HTTPS-adres van je Pi.
