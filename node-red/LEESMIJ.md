@@ -7,16 +7,16 @@
    `192.168.1.46:1883`. Vul in de brokerconfiguratie je inloggegevens in als nodig.
 5. Open http://iot08:1880/puzzle-ar/status voor een verbindingstest.
 
-De website stuurt code `48` naar `POST /puzzle-ar`. De flow controleert de code
-en publiceert op `PuzzleAR` met QoS 1:
+De website controleert de geheime code zelf en stuurt alleen `message=pass`
+en een timestamp naar `POST /puzzle-ar`. De flow publiceert op `PuzzleAR` met QoS 1:
 
 ```json
-{"message":"pass","timestamp":"2026-10-28T12:34:56.000Z"}
+{"message":"pass","timestamp":"2026-10-28T13:34:56+01:00"}
 ```
 
-De timestamp wordt op de Pi gemaakt in UTC. HTTP 202 bevestigt acceptatie door
+De timestamp wordt in de browser gemaakt in Nederlandse tijd (Europe/Amsterdam, automatisch zomer-/wintertijd) en ongewijzigd doorgestuurd. HTTP 202 bevestigt acceptatie door
 de flow, niet de ontvangst door de MQTT-broker. Controleer die in MQTT Explorer.
-Verander bij een nieuwe geheime code zowel de HTML als de controlefunctie.
+Verander bij een nieuwe geheime code alleen `GEHEIME_CODE` in de HTML.
 
 ## GitHub Pages en telefoon
 

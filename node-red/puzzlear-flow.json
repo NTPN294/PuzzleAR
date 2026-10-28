@@ -4,7 +4,7 @@
     "type": "tab",
     "label": "PuzzleAR naar MQTT",
     "disabled": false,
-    "info": "POST /puzzle-ar: code 48 -> PuzzleAR JSON pass + UTC timestamp. HTTP 202 betekent doorgegeven aan MQTT-node, geen brokerbevestiging."
+    "info": "POST /puzzle-ar: ontvangt message=pass en timestamp van de website en geeft ze door aan MQTT. De geheime code wordt alleen in de HTML gecontroleerd."
   },
   {
     "id": "puzzlear-in",
@@ -27,7 +27,7 @@
     "id": "puzzlear-validate",
     "type": "function",
     "z": "puzzlear-tab",
-    "name": "Controleer code en maak bericht",
+    "name": "Pass + timestamp naar MQTT",
     "x": 400,
     "y": 100,
     "wires": [
@@ -38,7 +38,7 @@
         "puzzlear-response"
       ]
     ],
-    "func": "msg.headers = {\"Access-Control-Allow-Origin\":\"*\", \"Content-Type\":\"application/json\", \"Cache-Control\":\"no-store\"};\nconst code = msg.payload && msg.payload.code;\nif (code !== \"48\") {\n    msg.statusCode = 400;\n    msg.payload = {ok:false, error:\"Deze code klopt niet.\"};\n    return [null, msg];\n}\nif (flow.get(\"puzzlearMqttConnected\") !== true) {\n    msg.statusCode = 503;\n    msg.payload = {ok:false, error:\"MQTT-broker nog niet verbonden. Probeer opnieuw.\"};\n    return [null, msg];\n}\nconst bericht = {\n    topic: \"PuzzleAR\",\n    payload: JSON.stringify({message:\"pass\", timestamp:new Date().toISOString()}),\n    qos: \"1\",\n    retain: false\n};\nmsg.statusCode = 202;\nmsg.payload = {ok:true, status:\"accepted\"};\nreturn [bericht, msg];",
+    "func": "msg.headers = {\"Access-Control-Allow-Origin\":\"*\", \"Content-Type\":\"application/json\", \"Cache-Control\":\"no-store\"};\nconst data = msg.payload;\nif (!data || data.message !== \"pass\" || typeof data.timestamp !== \"string\" || !Number.isFinite(Date.parse(data.timestamp))) {\n    msg.statusCode = 400;\n    msg.payload = {ok:false, error:\"Verwacht message pass met een geldige timestamp.\"};\n    return [null, msg];\n}\nif (flow.get(\"puzzlearMqttConnected\") !== true) {\n    msg.statusCode = 503;\n    msg.payload = {ok:false, error:\"MQTT-broker nog niet verbonden. Probeer opnieuw.\"};\n    return [null, msg];\n}\nconst bericht = {\n    topic: \"PuzzleAR\",\n    payload: JSON.stringify({message:data.message, timestamp:data.timestamp}),\n    qos: \"1\",\n    retain: false\n};\nmsg.statusCode = 202;\nmsg.payload = {ok:true, status:\"accepted\"};\nreturn [bericht, msg];",
     "outputs": 2,
     "timeout": 0,
     "noerr": 0,

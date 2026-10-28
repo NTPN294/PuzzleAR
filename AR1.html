@@ -589,7 +589,17 @@
           nodeRedStatus.textContent = "Node-RED niet bereikbaar. Controleer iot08:1880 en of de flow is gedeployed.";
         }
       }
-      async function stuurNaarNodeRed(code) {
+      function nederlandseTimestamp(datum = new Date()) {
+        const delen = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Europe/Amsterdam",
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+          hourCycle: "h23", timeZoneName: "longOffset",
+        }).formatToParts(datum).map(deel => [deel.type, deel.value]));
+        const offset = delen.timeZoneName.replace("GMT", "") || "+00:00";
+        return `${delen.year}-${delen.month}-${delen.day}T${delen.hour}:${delen.minute}:${delen.second}${offset}`;
+      }
+      async function stuurNaarNodeRed() {
         if (verstuurd || versturen || !nodeRedBereikbaarViaHttps()) return;
         versturen = true;
         nodeRedStatus.textContent = "Antwoord naar Node-RED sturen...";
@@ -597,7 +607,7 @@
           // Formulierdata voorkomt een JSON-CORS-preflight voor dit verzoek.
           const response = await fetch(NODE_RED_URL + "/puzzle-ar", {
             method: "POST",
-            body: new URLSearchParams({code}),
+            body: new URLSearchParams({message: "pass", timestamp: nederlandseTimestamp()}),
             signal: AbortSignal.timeout(8000),
           });
           const result = await response.json();
@@ -623,7 +633,7 @@
         const goed = code === GEHEIME_CODE;
         codeResultaat.textContent = goed ? "Goed! Je hebt de geheime code gevonden!" : "Deze code klopt nog niet. Probeer opnieuw.";
         codeResultaat.style.color = goed ? "#86efac" : "#fca5a5";
-        if (goed) stuurNaarNodeRed(code);
+        if (goed) stuurNaarNodeRed();
       });
       codeInput.addEventListener("input", () => { codeResultaat.textContent = ""; });
     </script>
