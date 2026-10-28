@@ -1,0 +1,170 @@
+[
+  {
+    "id": "puzzlear-tab",
+    "type": "tab",
+    "label": "PuzzleAR naar MQTT",
+    "disabled": false,
+    "info": "POST /puzzle-ar: code 48 -> PuzzleAR JSON pass + UTC timestamp. HTTP 202 betekent doorgegeven aan MQTT-node, geen brokerbevestiging."
+  },
+  {
+    "id": "puzzlear-in",
+    "type": "http in",
+    "z": "puzzlear-tab",
+    "name": "Antwoord van website",
+    "x": 130,
+    "y": 100,
+    "wires": [
+      [
+        "puzzlear-validate"
+      ]
+    ],
+    "url": "/puzzle-ar",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": ""
+  },
+  {
+    "id": "puzzlear-validate",
+    "type": "function",
+    "z": "puzzlear-tab",
+    "name": "Controleer code en maak bericht",
+    "x": 400,
+    "y": 100,
+    "wires": [
+      [
+        "puzzlear-mqtt"
+      ],
+      [
+        "puzzlear-response"
+      ]
+    ],
+    "func": "msg.headers = {\"Access-Control-Allow-Origin\":\"*\", \"Content-Type\":\"application/json\", \"Cache-Control\":\"no-store\"};\nconst code = msg.payload && msg.payload.code;\nif (code !== \"48\") {\n    msg.statusCode = 400;\n    msg.payload = {ok:false, error:\"Deze code klopt niet.\"};\n    return [null, msg];\n}\nif (flow.get(\"puzzlearMqttConnected\") !== true) {\n    msg.statusCode = 503;\n    msg.payload = {ok:false, error:\"MQTT-broker nog niet verbonden. Probeer opnieuw.\"};\n    return [null, msg];\n}\nconst bericht = {\n    topic: \"PuzzleAR\",\n    payload: JSON.stringify({message:\"pass\", timestamp:new Date().toISOString()}),\n    qos: \"1\",\n    retain: false\n};\nmsg.statusCode = 202;\nmsg.payload = {ok:true, status:\"accepted\"};\nreturn [bericht, msg];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "puzzlear-mqtt",
+    "type": "mqtt out",
+    "z": "puzzlear-tab",
+    "name": "PuzzleAR -> Mosquitto",
+    "x": 720,
+    "y": 70,
+    "wires": [],
+    "topic": "PuzzleAR",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "puzzlear-broker"
+  },
+  {
+    "id": "puzzlear-response",
+    "type": "http response",
+    "z": "puzzlear-tab",
+    "name": "Antwoord + CORS",
+    "x": 730,
+    "y": 140,
+    "wires": [],
+    "statusCode": "",
+    "headers": {}
+  },
+  {
+    "id": "puzzlear-health",
+    "type": "http in",
+    "z": "puzzlear-tab",
+    "name": "Website verbindingstest",
+    "x": 140,
+    "y": 240,
+    "wires": [
+      [
+        "puzzlear-health-fn"
+      ]
+    ],
+    "url": "/puzzle-ar/status",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": ""
+  },
+  {
+    "id": "puzzlear-health-fn",
+    "type": "function",
+    "z": "puzzlear-tab",
+    "name": "Status",
+    "x": 410,
+    "y": 240,
+    "wires": [
+      [
+        "puzzlear-response"
+      ]
+    ],
+    "func": "msg.headers = {\"Access-Control-Allow-Origin\":\"*\", \"Content-Type\":\"application/json\", \"Cache-Control\":\"no-store\"};\nmsg.payload = {ok:true, mqttConnected:flow.get(\"puzzlearMqttConnected\") === true};\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "puzzlear-status",
+    "type": "status",
+    "z": "puzzlear-tab",
+    "name": "MQTT verbinding",
+    "x": 140,
+    "y": 340,
+    "wires": [
+      [
+        "puzzlear-status-fn"
+      ]
+    ],
+    "scope": [
+      "puzzlear-mqtt"
+    ]
+  },
+  {
+    "id": "puzzlear-status-fn",
+    "type": "function",
+    "z": "puzzlear-tab",
+    "name": "Bewaar MQTT status",
+    "x": 410,
+    "y": 340,
+    "wires": [],
+    "func": "flow.set(\"puzzlearMqttConnected\", msg.status.fill === \"green\");\nreturn null;",
+    "outputs": 0,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "flow.set(\"puzzlearMqttConnected\", false);",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "puzzlear-broker",
+    "type": "mqtt-broker",
+    "name": "Lokale Mosquitto",
+    "broker": "192.168.1.46",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": ""
+  }
+]

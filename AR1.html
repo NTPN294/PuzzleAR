@@ -2,409 +2,632 @@
 <html lang="nl">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=no"
-    />
-    <title>WebAR & IoT Workshop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AR Project</title>
 
-    <!-- ================================================================= -->
-    <!-- BIBLIOTHEKEN (NIET AANPASSEN)                                     -->
-    <!-- Dit zijn voorgeschreven programma-onderdelen:                     -->
-    <!--   1. A-Frame  = maakt 3D objecten in de browser                   -->
-    <!--   2. AR.js    = plakt die 3D objecten op de marker via de camera  -->
-    <!--   3. Paho MQTT= laat de pagina praten met de MQTT-broker          -->
-    <!--      (wordt pas gebruikt vanaf STAP 3)                             -->
-    <!-- ================================================================= -->
     <script src="https://aframe.io/releases/1.0.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/jeromeetienne/AR.js/2.1.4/aframe/build/aframe-ar.js"></script>
     <script src="js/mqttws31.min.js"></script>
+    <script>
+      // Het model bestaat alleen uit eenvoudige vormen, zonder model-download.
+      AFRAME.registerComponent("houten-sahur", {
+        init: function () {
+          const hout = "#ac6c30";
+          const donker = "#673a1b";
+          const vorm = (type, positie, schaal, kleur, parent = this.el, extra = {}) => {
+            const el = document.createElement("a-" + type);
+            el.setAttribute("position", positie);
+            el.setAttribute("scale", schaal);
+            el.setAttribute("color", kleur);
+            el.setAttribute("roughness", "0.8");
+            Object.entries(extra).forEach(([naam, waarde]) => el.setAttribute(naam, waarde));
+            parent.appendChild(el);
+            return el;
+          };
+          const bol = (p, s, c, parent) => vorm("sphere", p, s, c, parent, { radius: 1 });
+          const staaf = (p, s, c, parent, extra) => vorm("cylinder", p, s, c, parent, { radius: 1, height: 1, ...extra });
+          // Lange stam met afgeronde uiteinden, zoals in het voorbeeld.
+          staaf("0 1.35 0", "0.31 1.55 0.27", hout);
+          bol("0 2.125 0", "0.31 0.095 0.27", "#b97b3c");
+          bol("0 0.575 0", "0.31 0.06 0.27", hout);
+          // Dunne, licht onregelmatige houtstrepen rond het lijf.
+          for (let i = 0; i < 22; i++) {
+            const hoek = i * Math.PI * 2 / 22;
+            const x = Math.sin(hoek) * 0.311;
+            const z = Math.cos(hoek) * 0.271;
+            const hoogte = 0.64 + (i % 3) * 0.06;
+            const einde = z > 0.12 && Math.abs(x) < 0.25 ? 1.28 : 2.08;
+            const lijn = document.createElement("a-entity");
+            lijn.setAttribute("line", {
+              start: { x, y: hoogte, z },
+              end: { x: x * 0.985, y: einde, z: z * 1.005 },
+              color: i % 2 ? "#8e5428" : "#c18949",
+            });
+            this.el.appendChild(lijn);
+          }
+          // Oogranden, grote oogbollen, bruine irissen en glanspuntjes.
+          [-1, 1].forEach((kant) => {
+            const x = kant * 0.14;
+            bol(`${x} 1.79 0.245`, "0.139 0.165 0.07", donker);
+            bol(`${x} 1.79 0.285`, "0.116 0.14 0.067", "#fff4d9");
+            bol(`${x} 1.775 0.345`, "0.066 0.075 0.023", "#70401d");
+            bol(`${x} 1.775 0.365`, "0.037 0.044 0.015", "#100b07");
+            bol(`${x - 0.017} 1.8 0.38`, "0.013 0.016 0.008", "white");
+            const wenkbrauw = bol(`${x} 1.975 0.255`, "0.132 0.038 0.038", "#482713");
+            wenkbrauw.setAttribute("rotation", `0 0 ${kant * -13}`);
+          });
+          // Langere neus en één doorlopende gebogen lach op de stam.
+          bol("0 1.63 0.29", "0.05 0.135 0.065", "#bd7b37");
+          bol("0 1.555 0.35", "0.078 0.055 0.065", "#c38642");
+          const lachPunten = [];
+          for (let i = 0; i <= 32; i++) {
+            const x = -0.21 + (i / 32) * 0.42;
+            const y = 1.36 + 0.105 * Math.pow(x / 0.21, 2);
+            const z = 0.27 * Math.sqrt(1 - Math.pow(x / 0.31, 2)) + 0.012;
+            lachPunten.push(new THREE.Vector3(x, y, z));
+          }
+          const lach = new THREE.Mesh(
+            new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lachPunten), 48, 0.012, 8, false),
+            new THREE.MeshStandardMaterial({ color: "#3a2010", roughness: 0.9 }),
+          );
+          this.el.setObject3D("lach", lach);
+          // Alleen cilinders voor benen en voeten.
+          [-1, 1].forEach((kant) => {
+            const x = kant * 0.16;
+            staaf(`${x} 0.32 0`, "0.05 0.52 0.05", hout);
+            staaf(`${x} 0.055 0.065`, "0.055 0.2 0.055", hout, this.el,
+              { rotation: "90 0 0" });
+          });
+          // Vrije arm met elleboog en eenvoudige vingers.
+          staaf("0.38 1.16 0", "0.052 0.44 0.052", hout, this.el, { rotation: "0 0 15" });
+          bol("0.435 0.95 0", "0.055 0.06 0.055", hout);
+          staaf("0.43 0.77 0.025", "0.037 0.36 0.04", hout);
+          bol("0.43 0.56 0.04", "0.065 0.09 0.04", hout);
+          for (let i = 0; i < 4; i++) {
+            bol(`${0.385 + i * 0.027} ${0.47 + Math.abs(i - 1) * 0.015} 0.05`,
+              "0.016 0.075 0.021", hout);
+          }
+          // Knuppel aan de andere kant, met smalle greep en ronde kop.
+          const arm = this.el.querySelector(".knuppel-arm");
+          arm.setAttribute("position", "-0.33 1.35 0");
+          staaf("-0.045 -0.19 0", "0.05 0.39 0.05", hout, arm, { rotation: "0 0 -14" });
+          // Gebogen onderarm: de hand houdt de knuppel rechtop naast het hoofd.
+          staaf("-0.16 -0.30 0.09", "0.04 0.28 0.04", hout, arm, { rotation: "45 0 50" });
+          bol("-0.23 -0.23 0.18", "0.075 0.085 0.065", "#bb7a37", arm);
+          const knuppel = document.createElement("a-entity");
+          knuppel.setAttribute("position", "-0.23 -0.23 0.18");
+          knuppel.setAttribute("rotation", "0 0 0");
+          arm.appendChild(knuppel);
+          staaf("0 -0.11 0", "0.027 0.38 0.027", donker, knuppel);
+          vorm("cone", "0 0.31 0", "1 1 1", "#b97a37", knuppel,
+            { "radius-bottom": 0.035, "radius-top": 0.085, height: 0.65 });
+          bol("0 0.635 0", "0.085 0.07 0.085", "#b97a37", knuppel);
+          for (let i = 0; i < 3; i++) {
+            bol(`0.025 ${-0.06 + i * 0.05} 0.035`, "0.052 0.023 0.035", hout, knuppel);
+          }
+        },
+      });
+      AFRAME.registerComponent("bombardino", {
+        init: function () {
+          this.hud = document.getElementById("vraag-2");
+          this.status = document.getElementById("kleur-status");
+          this.buttons = [...this.hud.querySelectorAll("[data-kleur]")];
+          this.volgorde = ["blauw", "rood", "geel", "groen"];
+          this.kleuren = { rood: "#ef4444", blauw: "#3b82f6", groen: "#22c55e", geel: "#facc15" };
+          this.actief = false;
+          this.bommen = [];
+          const deel = (parent, type, attrs) => {
+            const el = document.createElement("a-" + type);
+            Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
+            parent.appendChild(el);
+            return el;
+          };
+          this.vliegtuig = deel(this.el, "entity", {
+            position: "0 1.2 -0.35",
+            rotation: "-90 0 0",
+          });
+          const p = this.vliegtuig;
+          // Krokodillijf met lange snuit, vleugels, staart en twee propellers.
+          deel(p, "sphere", { scale: "0.24 0.18 0.65", color: "#527442" });
+          deel(p, "box", { position: "0 -0.03 0.66", width: 0.38, height: 0.16, depth: 0.58, color: "#70944d" });
+          deel(p, "box", { position: "0 -0.105 0.7", width: 0.39, height: 0.035, depth: 0.58, color: "#26391f" });
+          deel(p, "box", { position: "0 -0.145 0.7", width: 0.37, height: 0.05, depth: 0.55, color: "#8aa35b" });
+          deel(p, "box", { position: "0 0 -0.12", width: 1.9, height: 0.055, depth: 0.34, color: "#67765c" });
+          deel(p, "box", { position: "0 0.03 -0.66", width: 0.72, height: 0.045, depth: 0.2, color: "#67765c" });
+          deel(p, "box", { position: "0 0.19 -0.65", width: 0.045, height: 0.35, depth: 0.22, color: "#527442" });
+          [-1, 1].forEach((kant) => {
+            deel(p, "sphere", { position: `${kant * 0.15} 0.15 0.39`, radius: 0.1, color: "#8aaa59" });
+            deel(p, "sphere", { position: `${kant * 0.15} 0.18 0.455`, radius: 0.06, color: "#fff1b8" });
+            deel(p, "sphere", { position: `${kant * 0.15} 0.185 0.505`, radius: 0.026, color: "#172313" });
+            for (let i = 0; i < 5; i++) {
+              deel(p, "cone", { position: `${kant * 0.185} -0.09 ${0.49 + i * 0.095}`, rotation: "180 0 0", radiusBottom: 0.025, "radius-bottom": 0.025, "radius-top": 0, height: 0.065, color: "#fff3ce" });
+            }
+            deel(p, "cylinder", { position: `${kant * 0.59} 0 -0.03`, rotation: "90 0 0", radius: 0.1, height: 0.42, color: "#404d37" });
+            const rotor = deel(p, "entity", { position: `${kant * 0.59} 0 0.2`, animation: "property: rotation; to: 0 0 360; dur: 250; easing: linear; loop: true" });
+            deel(rotor, "box", { width: 0.035, height: 0.43, depth: 0.025, color: "#c5b68a" });
+          });
+          this.volgorde.forEach((kleur) => {
+            const bom = deel(this.el, "entity", { visible: false });
+            deel(bom, "sphere", { scale: "0.105 0.19 0.105", color: this.kleuren[kleur], shader: "flat" });
+            deel(bom, "box", { position: "0 0.16 0", width: 0.26, height: 0.06, depth: 0.045, color: this.kleuren[kleur] });
+            this.bommen.push(bom);
+          });
+          this.reset = () => {
+            this.elapsed = 0;
+            this.invoer = [];
+            this.klaar = false;
+            this.opgelost = false;
+            this.bommen.forEach(bom => bom.setAttribute("visible", false));
+            this.buttons.forEach(btn => { btn.disabled = true; });
+            this.status.textContent = "Kijk naar de vier bommen en onthoud de kleurvolgorde.";
+          };
+          this.buttons.forEach(btn => btn.addEventListener("click", () => {
+            if (!this.actief || !this.klaar || this.opgelost) return;
+            this.invoer.push(btn.dataset.kleur);
+            if (this.invoer.length < 4) {
+              this.status.textContent = `${this.invoer.length} van 4 kleuren gekozen`;
+              return;
+            }
+            if (this.invoer.every((kleur, i) => kleur === this.volgorde[i])) {
+              this.opgelost = true;
+              this.status.textContent = "Goed! Het nummer is 8";
+              this.buttons.forEach(button => { button.disabled = true; });
+            } else {
+              this.invoer = [];
+              this.status.textContent = "Nog niet goed. Kies opnieuw vier kleuren of bekijk de bommen opnieuw.";
+            }
+          }));
+          this.hud.querySelector(".opnieuw").addEventListener("click", this.reset);
+          this.el.addEventListener("markerFound", () => { this.actief = true; this.hud.hidden = false; });
+          this.el.addEventListener("markerLost", () => { this.actief = false; this.hud.hidden = true; });
+          this.reset();
+        },
+        tick: function (time, delta) {
+          if (!this.actief || this.klaar) return;
+          this.elapsed += Math.min(delta, 100);
+          this.vliegtuig.object3D.position.y = 1.2 + Math.sin(this.elapsed / 400) * 0.035;
+          this.bommen.forEach((bom, i) => {
+            const fase = (this.elapsed - 800 - i * 1200) / 950;
+            bom.object3D.visible = fase >= 0 && fase < 1;
+            if (bom.object3D.visible) {
+              bom.object3D.position.set(0, 1.05 - fase * fase, -0.1 + fase * 0.9);
+              bom.object3D.rotation.z = fase * 0.3;
+            }
+          });
+          if (this.elapsed >= 5400) {
+            this.klaar = true;
+            this.buttons.forEach(btn => { btn.disabled = false; });
+            this.status.textContent = "Klik de vier kleuren in de volgorde waarin de bommen vielen.";
+          }
+        },
+      });
+      AFRAME.registerComponent("sahur-slagen", {
+        init: function () {
+          this.arm = this.el.querySelector(".knuppel-arm");
+          this.model = this.el.querySelector("#sahur");
+          this.knop = document.getElementById("sla-knop");
+          this.status = document.getElementById("slag-status");
+          this.actief = false;
+          this.slagen = 0;
+          this.swing = null;
+          this.breekTijd = null;
+          const materiaal = new THREE.MeshStandardMaterial({ color: "#ffc928", roughness: 0.65 });
+          this.blok = new THREE.Group();
+          this.blok.position.set(-0.56, 0.86, 0.36);
+          this.blok.add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.44, 0.44), materiaal));
+          const randen = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(0.445, 0.445, 0.445)),
+            new THREE.LineBasicMaterial({ color: "#ac6700" }),
+          );
+          this.blok.add(randen);
+          this.model.object3D.add(this.blok);
+          this.vraagteken = document.createElement("a-text");
+          this.vraagteken.setAttribute("value", "?");
+          this.vraagteken.setAttribute("position", "-0.56 0.86 0.59");
+          this.vraagteken.setAttribute("align", "center");
+          this.vraagteken.setAttribute("color", "#fff9da");
+          this.vraagteken.setAttribute("width", "2.5");
+          this.model.appendChild(this.vraagteken);
+          // Scheuren liggen op de voorkant en bovenkant van het blok.
+          this.scheuren = [];
+          for (let i = 0; i < 9; i++) {
+            const x = -0.18 + i * 0.043;
+            const punten = [
+              new THREE.Vector3(x, 0.22, -0.1),
+              new THREE.Vector3(x + 0.025, 0.224, 0.09),
+              new THREE.Vector3(x - 0.015, 0.224, 0.224),
+              new THREE.Vector3(x + 0.025, 0.08, 0.224),
+              new THREE.Vector3(x - 0.02, -0.04, 0.224),
+              new THREE.Vector3(x + 0.01, -0.19, 0.224),
+            ];
+            const scheur = new THREE.Mesh(
+              new THREE.TubeGeometry(new THREE.CatmullRomCurve3(punten), 20, 0.005, 4, false),
+              new THREE.MeshBasicMaterial({ color: "#53300d" }),
+            );
+            scheur.visible = false;
+            this.blok.add(scheur);
+            this.scheuren.push(scheur);
+          }
+          this.stukken = [];
+          for (let i = 0; i < 16; i++) {
+            const stuk = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), materiaal);
+            stuk.visible = false;
+            this.model.object3D.add(stuk);
+            const hoek = i * Math.PI * 2 / 16;
+            this.stukken.push({ mesh: stuk, vx: Math.cos(hoek) * (0.4 + i % 3 * 0.15), vy: 0.65 + i % 4 * 0.15, vz: Math.sin(hoek) * 0.65 });
+          }
+          this.getal = document.createElement("a-text");
+          this.getal.setAttribute("value", "4");
+          this.getal.setAttribute("position", "-0.56 0.94 0.62");
+          this.getal.setAttribute("align", "center");
+          this.getal.setAttribute("color", "#fff3a0");
+          this.getal.setAttribute("width", "5");
+          this.getal.setAttribute("visible", false);
+          this.model.appendChild(this.getal);
+          this.verplaatsKnop = (willekeurig = false) => {
+            const viewport = window.visualViewport;
+            const links = viewport ? viewport.offsetLeft : 0;
+            const boven = viewport ? viewport.offsetTop : 0;
+            const breedte = viewport ? viewport.width : window.innerWidth;
+            const hoogte = viewport ? viewport.height : window.innerHeight;
+            const marge = 16;
+            const knopBreedte = this.knop.offsetWidth || 104;
+            const knopHoogte = this.knop.offsetHeight || 64;
+            const code = document.getElementById("code-formulier").getBoundingClientRect();
+            const vraag = document.getElementById("vraag-1").getBoundingClientRect();
+            const minX = links + marge;
+            const maxX = links + breedte - knopBreedte - marge;
+            const minY = Math.max(boven + marge, code.bottom + marge);
+            const maxY = Math.min(boven + hoogte - marge, vraag.top - marge) - knopHoogte;
+            // Bij een open toetsenbord of heel klein venster geen overlap forceren.
+            this.ruimteVoorKnop = maxX >= minX && maxY >= minY;
+            if (!this.ruimteVoorKnop) {
+              this.knop.hidden = true;
+              return;
+            }
+            const oudX = parseFloat(this.knop.style.left);
+            const oudY = parseFloat(this.knop.style.top);
+            // Markerherkenning en viewport-events mogen geen nieuwe plek loten.
+            if (!willekeurig && Number.isFinite(oudX) && Number.isFinite(oudY)) {
+              this.knop.style.left = `${Math.max(minX, Math.min(maxX, oudX))}px`;
+              this.knop.style.top = `${Math.max(minY, Math.min(maxY, oudY))}px`;
+              this.knop.hidden = !this.actief || this.slagen >= 10;
+              return;
+            }
+            let beste, afstand = -1;
+            for (let i = 0; i < 12; i++) {
+              const x = minX + Math.random() * (maxX - minX);
+              const y = minY + Math.random() * (maxY - minY);
+              const d = Number.isFinite(oudX) ? Math.hypot(x - oudX, y - oudY) : 0;
+              if (d > afstand) { beste = { x, y }; afstand = d; }
+              if (d >= 110) break;
+            }
+            this.knop.style.left = `${beste.x}px`;
+            this.knop.style.top = `${beste.y}px`;
+            this.knop.hidden = !this.actief || this.slagen >= 10;
+          };
+          const updateKnop = () => {
+            this.knop.disabled = !this.actief || this.swing !== null || this.slagen >= 10;
+            this.knop.hidden = !this.actief || this.slagen >= 10 || this.ruimteVoorKnop === false;
+          };
+          this.updateKnop = updateKnop;
+          this.knop.addEventListener("click", () => {
+            if (!this.actief || this.swing !== null || this.slagen >= 10) return;
+            this.swing = 0;
+            this.geraakt = false;
+            updateKnop();
+            this.verplaatsKnop(true);
+          });
+          this.el.addEventListener("markerFound", () => {
+            this.actief = true;
+            document.getElementById("vraag-1").hidden = false;
+            this.verplaatsKnop();
+            updateKnop();
+          });
+          this.el.addEventListener("markerLost", () => {
+            this.actief = false;
+            document.getElementById("vraag-1").hidden = true;
+            updateKnop();
+          });
+          this.bijVensterWijziging = () => {
+            if (this.actief) this.verplaatsKnop();
+          };
+          window.addEventListener("resize", this.bijVensterWijziging);
+          if (window.visualViewport) {
+            window.visualViewport.addEventListener("resize", this.bijVensterWijziging);
+            window.visualViewport.addEventListener("scroll", this.bijVensterWijziging);
+          }
+          updateKnop();
+        },
+        remove: function () {
+          window.removeEventListener("resize", this.bijVensterWijziging);
+          if (window.visualViewport) {
+            window.visualViewport.removeEventListener("resize", this.bijVensterWijziging);
+            window.visualViewport.removeEventListener("scroll", this.bijVensterWijziging);
+          }
+        },
+        tick: function (time, delta) {
+          if (!this.actief) return;
+          const dt = Math.min(delta, 50) / 1000;
+          if (this.swing !== null) {
+            this.swing += dt;
+            const t = this.swing;
+            const smooth = x => x * x * (3 - 2 * x);
+            const hoek = t < 0.22 ? 1.8 * smooth(t / 0.22)
+              : t < 0.3 ? 1.8 : 1.8 * (1 - smooth(Math.min(1, (t - 0.3) / 0.35)));
+            this.arm.object3D.rotation.x = hoek;
+            if (t >= 0.22 && !this.geraakt) {
+              this.geraakt = true;
+              this.slagen++;
+              this.status.textContent = `${this.slagen} / 10 slagen`;
+              this.scheuren.forEach((scheur, i) => { scheur.visible = i < this.slagen; });
+              if (this.slagen === 10) {
+                this.blok.visible = false;
+                this.vraagteken.setAttribute("visible", false);
+                this.getal.setAttribute("visible", true);
+                this.breekTijd = 0;
+                this.status.textContent = "Lucky block open! Je geheime getal is 4.";
+                this.knop.textContent = "Gekraakt!";
+                this.updateKnop();
+              }
+            }
+            if (this.slagen < 10) {
+              const schok = t >= 0.22 ? Math.sin((t - 0.22) * 65) * Math.exp(-(t - 0.22) * 12) * 0.055 : 0;
+              this.blok.rotation.z = schok;
+            }
+            if (t >= 0.65) {
+              this.swing = null;
+              this.arm.object3D.rotation.x = 0;
+              this.blok.rotation.z = 0;
+              this.updateKnop();
+            }
+          }
+          if (this.breekTijd !== null) {
+            this.breekTijd += dt;
+            const t = this.breekTijd;
+            this.stukken.forEach(({ mesh, vx, vy, vz }) => {
+              mesh.visible = t < 1.1;
+              mesh.position.set(-0.56 + vx * t, 0.86 + vy * t - 1.8 * t * t, 0.36 + vz * t);
+              mesh.rotation.set(t * vx * 8, t * 5, t * vz * 8);
+              mesh.scale.setScalar(Math.max(0, 1 - t / 1.1));
+            });
+            if (t >= 1.1) this.breekTijd = null;
+          }
+        },
+      });
+    </script>
 
-    <!-- ================================================================= -->
-    <!-- STYLING: hoe 2D onderdelen op het scherm eruitzien.                -->
-    <!-- In dit beginbestand is het scherm nog leeg (geen randen/marges).  -->
-    <!-- Vanaf STAP 2 voeg je hier knoppen en panelen toe.                  -->
-    <!-- ================================================================= -->
     <style>
       body {
         margin: 0;
         overflow: hidden;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       }
-
-      /* [OPDRACHT 2] Knoppenbalk onderaan het scherm */
-      #controls {
+      #vraag-1 {
         position: fixed;
-        /* vast op het scherm, ook als je beweegt */
         bottom: 20px;
-        /* 20 pixels vanaf de onderkant */
         left: 50%;
         transform: translateX(-50%);
-        /* horizontaal centreren */
-        display: flex;
-        gap: 12px;
-        /* ruimte tussen de knoppen */
-        z-index: 1000;
-        /* zorg dat knoppen bovenop het camerabeeld liggen */
-      }
-
-      .btn {
+        width: min(88%, 560px);
+        box-sizing: border-box;
+        padding: 16px 20px;
+        border-radius: 16px;
+        background: rgba(24, 16, 10, 0.9);
         color: white;
-        border: none;
-        padding: 12px 20px;
-        font-size: 15px;
-        font-weight: bold;
-        border-radius: 25px;
-        cursor: pointer;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-      }
-
-      .btn:active {
-        transform: scale(0.95);
-      }
-
-      #btn-groen {
-        background: #00aa00;
-      }
-
-      #btn-rood {
-        background: #cc0000;
-      }
-
-      #status-bar {
-        position: fixed;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.8);
-        color: #00ffcc;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 14px;
-        font-weight: bold;
+        font: 600 20px/1.4 system-ui, sans-serif;
+        text-align: center;
         z-index: 1000;
+        pointer-events: auto;
       }
-      #publish-bar {
+      #sla-knop {
         position: fixed;
-        top: 52px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 6px;
-        z-index: 1000;
-      }
-      #publish-bar input {
-        padding: 6px 10px;
-        border-radius: 15px;
-        border: none;
-        font-size: 14px;
-        width: 160px;
-      }
-      #publish-bar button {
-        padding: 6px 14px;
-        border-radius: 15px;
-        border: none;
-        background: #00ffcc;
-        font-weight: bold;
-        cursor: pointer;
-      }
-      #sensor-panel {
-        position: fixed;
-        top: 100px;
-        left: 10px;
-        background: rgba(0, 0, 0, 0.75);
-        color: white;
+        z-index: 1003;
+        width: 104px;
+        height: 64px;
         padding: 12px;
+        border: 0;
+        border-radius: 12px;
+        background: #ffc928;
+        color: #352009;
+        font: 800 22px system-ui, sans-serif;
+        cursor: pointer;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #sla-knop:disabled { opacity: 0.6; cursor: default; }
+      #sla-knop:active { transform: scale(0.94); }
+      #slag-status { margin: 8px 0; }
+      #vraag-1 strong {
+        display: block;
+        color: #ffd28a;
+        margin-bottom: 4px;
+      }
+      #vraag-2 {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(92%, 480px);
+        box-sizing: border-box;
+        padding: 16px;
+        border-radius: 16px;
+        background: rgba(16, 28, 18, 0.94);
+        color: white;
+        font: 16px/1.4 system-ui, sans-serif;
+        text-align: center;
+        z-index: 1001;
+      }
+      #kleur-status { margin: 10px 0; }
+      .kleur-keuzes { display: flex; justify-content: center; gap: 12px; }
+      .kleur-keuzes button {
+        width: 64px;
+        height: 64px;
+        border: 3px solid white;
+        border-radius: 12px;
+        cursor: pointer;
+        color: white;
+        font-weight: bold;
+        text-shadow: 0 1px 3px black;
+      }
+      .kleur-keuzes button:disabled { opacity: 0.45; cursor: default; }
+      .kleur-keuzes button:active { transform: scale(0.92); }
+      .opnieuw { margin-top: 12px; padding: 8px 16px; border-radius: 8px; border: 0; cursor: pointer; }
+      #code-formulier {
+        position: fixed;
+        top: max(12px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(92%, 480px);
+        box-sizing: border-box;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(18, 22, 30, 0.94);
+        color: white;
+        font: 16px/1.4 system-ui, sans-serif;
+        text-align: center;
+        z-index: 1002;
+      }
+      #code-formulier label { display: block; margin-bottom: 10px; }
+      .code-invoer { display: flex; gap: 8px; }
+      #geheime-code {
+        flex: 1;
+        min-width: 0;
+        padding: 10px;
+        border: 2px solid #c5cbd5;
         border-radius: 8px;
-        font-size: 13px;
-        z-index: 1000;
-        border-left: 4px solid #00ffcc;
+        font: inherit;
       }
-      #sensor-panel .topic-naam {
+      #code-formulier button {
+        padding: 10px 16px;
+        border: 0;
+        border-radius: 8px;
+        background: #ffd28a;
+        color: #241809;
+        font: inherit;
         font-weight: bold;
-        color: #00ffcc;
-        font-size: 12px;
-        word-break: break-all;
+        cursor: pointer;
       }
-      #sensor-panel .sensor-waarde {
-        font-size: 20px;
-        font-weight: bold;
-      }
+      #code-resultaat { margin: 8px 0 0; }
+      #code-resultaat:empty { display: none; }
     </style>
   </head>
-
   <body>
-    <!-- ================================================================= -->
-    <!-- AR SCENE: hieronder staan de markers en de 3D objecten.            -->
-    <!-- ================================================================= -->
-    <!--
-    UITLEG OVER DEZE REGEL:
-    - embedded arjs  : we gebruiken de camera van de telefoon
-    - detectionMode  : mono_and_matrix = we herkennen barcode-markers
-    - matrixCodeType : de prints zijn 3x3 barcodes (zie het printsheet)
-    - debugUIEnabled : false = geen debug-balk onderin het scherm.
-                       Zet op 'true' als de marker niet herkend wordt.
-  -->
-
-    <!-- [OPDRACHT 3] Statusbalk en sensordata-paneel -->
-    <div id="status-bar">MQTT: Verbinden...</div>
-    <div id="publish-bar">
-      <input id="publish-input" type="text" placeholder="Bericht..." />
-      <button id="publish-btn">Post</button>
+    <form id="code-formulier">
+      <label for="geheime-code">Vind alle getallen en vul ze in de juiste volgorde in om de geheime code te kraken!</label>
+      <div class="code-invoer">
+        <input id="geheime-code" type="text" inputmode="numeric" autocomplete="off" placeholder="Geheime code" />
+        <button type="submit">Check</button>
+      </div>
+      <p id="code-resultaat" role="status" aria-live="polite"></p>
+      <p id="node-red-status" role="status" style="font-size:12px; margin:6px 0 0">Node-RED: verbinding controleren...</p>
+    </form>
+    <div id="vraag-1" hidden>
+      <strong>Vraag 1</strong>
+      Tik op de rondreizende SLA-knop om het lucky block te breken!
+      <p id="slag-status" role="status" aria-live="polite">0 / 10 slagen</p>
     </div>
-    <div id="sensor-panel">
-      <span class="topic-naam" id="topic-naam">-</span><br />
-      Waarde: <span class="sensor-waarde" id="sensor-waarde">-</span>
+    <button id="sla-knop" type="button" aria-label="Sla op het lucky block" hidden>SLA!</button>
+    <div id="vraag-2" hidden>
+      <strong>Vraag 2: Bombardino Crocodilo</strong>
+      <p id="kleur-status" role="status" aria-live="polite"></p>
+      <div class="kleur-keuzes">
+        <button type="button" data-kleur="rood" style="background: #ef4444" aria-label="Rood">Rood</button>
+        <button type="button" data-kleur="blauw" style="background: #3b82f6" aria-label="Blauw">Blauw</button>
+        <button type="button" data-kleur="groen" style="background: #22c55e" aria-label="Groen">Groen</button>
+        <button type="button" data-kleur="geel" style="background: #facc15" aria-label="Geel">Geel</button>
+      </div>
+      <button type="button" class="opnieuw">Bommen opnieuw bekijken</button>
     </div>
-
-    <!-- [OPDRACHT 2] Knoppenbalk -->
-    <div id="controls">
-      <button id="btn-groen" class="btn">GROEN</button>
-      <button id="btn-rood" class="btn">ROOD</button>
-    </div>
-
     <a-scene
       embedded
       arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3; debugUIEnabled: false;"
     >
-      <!-- ================================================================ -->
-      <!-- [STAP 1] MARKER 1: PROJECTIE                                     -->
-      <!-- ================================================================ -->
-      <!--
-      Wat je hier ziet:
-      - <a-marker ... value="1"> = dit blok hoort bij barcode-marker 1
-      - <a-box>     = een 3D kubus
-      - <a-sphere>  = een 3D bol
-      - position="X Y Z":
-          X = links (-) / rechts (+)
-          Y = hoogte: 0 = op de marker, 0.5 = een halve meter erboven
-          Z = naar je toe (+) / van je af (-)
-      - color = de kleur als hexcode (#RRGGBB).
-        STUDENTEN: kies zelf een kleur, bijv. via
-        https://www.w3schools.com/colors/colors_hexadecimal.asp
-    -->
-      <a-marker type="barcode" value="1" emitevents="true">
-        <!-- Kubus: links van het midden, zwevend boven de marker -->
-        <a-box
-          position="0 0.4 0"
-          color="purple"
-          depth="0.5"
-          height="0.5"
-          width="0.5"
-        ></a-box>
-        <a-sphere position="0 1.4 0" radius="0.3" color="blue"></a-sphere>
-      </a-marker>
-
-      <!-- [OPDRACHT 2] Marker 2: object dat van kleur verandert -->
-      <a-marker type="barcode" value="2" emitevents="true">
-        <a-box
-          id="stap2-kubus"
-          position="0 0.5 0"
-          color="#808080"
-          width="0.6"
-          height="0.6"
-          depth="0.6"
-        ></a-box>
-      </a-marker>
-      <!-- De AR-camera. Niet aanpassen. -->
-      <a-entity camera></a-entity>
-
-      <!-- [OPDRACHT 4/5] Marker 4: blok met live MQTT-waarde -->
-      <a-marker type="barcode" value="4" emitevents="true">
-        <a-box
-          id="stap4-blok"
-          position="0 0.5 0"
-          color="#00ff00"
-          width="1"
-          height="1"
-          depth="1"
-        ></a-box>
+      <!-- Gestileerde houten Tung Tung Tung Sahur met bewegende knuppel. -->
+      <a-marker id="marker-1" type="barcode" value="1" emitevents="true" sahur-slagen>
+        <a-entity id="sahur" position="0 0.4 1.05" rotation="-90 0 0" houten-sahur>
+          <a-entity class="knuppel-arm"></a-entity>
+        </a-entity>
         <a-text
-          id="stap4-tekst"
-          value="-"
-          position="0 1.01 0"
+          value="TUNG TUNG TUNG SAHUR"
+          position="0 0.01 0.8"
           rotation="-90 0 0"
           align="center"
-          width="4"
-          color="#000000"
-          scale="0.8 0.8 0.8"
-          side="double"
+          width="3"
+          color="#ffffff"
         ></a-text>
       </a-marker>
 
-      <!-- Marker 3: gek ruimteschip -->
-      <a-marker type="barcode" value="3" emitevents="true">
-        <a-entity id="ruimteschip" position="0 1 0"
-          animation="property: rotation; to: 0 360 0; dur: 6000; easing: linear; loop: true">
-          <a-cylinder radius="0.6" height="0.12" color="#bbbbbb" metalness="0.8"></a-cylinder>
-          <a-sphere position="0 0.12 0" radius="0.28" color="#44ddff" opacity="0.7"></a-sphere>
-          <a-cone position="0 -0.25 0" rotation="180 0 0" radius-bottom="0.25" radius-top="0" height="0.4" color="#ff00aa"></a-cone>
-          <a-sphere position="0.55 0 0" radius="0.08" color="#ffff00"></a-sphere>
-          <a-sphere position="-0.55 0 0" radius="0.08" color="#ff3333"></a-sphere>
-          <a-sphere position="0 0 0.55" radius="0.08" color="#33ff33"></a-sphere>
-          <a-sphere position="0 0 -0.55" radius="0.08" color="#3333ff"></a-sphere>
-          <a-torus position="0 0 0" rotation="90 0 0" radius="0.8" radius-tubular="0.02" color="#ff9900"></a-torus>
-        </a-entity>
-      </a-marker>
+      <a-marker id="marker-2" type="barcode" value="2" emitevents="true" bombardino></a-marker>
+
+      <a-entity camera></a-entity>
     </a-scene>
-    <!-- ================================================================= -->
-    <!-- SCRIPT: hier komt later de logica van de knoppen (STAP 2) en       -->
-    <!-- de MQTT-verbinding (STAP 3 t/m 6). In dit beginbestand is er       -->
-    <!-- nog geen script nodig: de kubus hierboven staat volledig in de     -->
-    <!-- HTML.                                                             -->
-    <!-- ================================================================= -->
-
-    <!-- [OPDRACHT 2] Script: knoppen veranderen de kleur -->
     <script>
-      // [OPDRACHT 4] het blok en de tekst op marker 4 ophalen
-      const stap4Blok = document.getElementById("stap4-blok");
-      const stap4Tekst = document.getElementById("stap4-tekst");
-      // ============================================================
-      // [OPDRACHT 3] MQTT INSTELLINGEN — pas hier je eigen waarden aan!
-      // ============================================================
-      const DEFAULT_MQTT_URL = "wss://broker.emqx.io:8084/mqtt"; // de publieke broker
-      const DEFAULT_GROEPS_ID = "AR1"; // jouw groepsnaam
-
-      const GROEPS_ID = DEFAULT_GROEPS_ID;
-      const MQTT_URL = localStorage.getItem("mqtt_url") || DEFAULT_MQTT_URL;
-      const TOPIC_SENSOR =
-        localStorage.getItem("mqtt_topic_sensor") ||
-        "workshop/" + GROEPS_ID + "/sensorData";
-
-      // De onderdelen van het scherm die we nodig hebben
-      const statusBar = document.getElementById("status-bar");
-      const topicNaam = document.getElementById("topic-naam");
-      const sensorWaarde = document.getElementById("sensor-waarde");
-
-      // Toon meteen de naam van het topic in de titel van het paneel
-      topicNaam.innerText = TOPIC_SENSOR;
-
-      // Maak de MQTT-verbinding.
-      // BEVEILIGING: met een foutief broker-adres crasht de MQTT-bibliotheek
-      // normaal het HELE script — ook de instellingen-knop gaat dan dood en
-      // je komt er niet meer in om de fout te herstellen. Met try/catch
-      // vangen we de fout af: de app blijft werken, alleen MQTT doet niks.
-      const clientId =
-        "WebClient_" +
-        GROEPS_ID +
-        "_" +
-        Math.random().toString(16).substr(2, 8);
-      let client = null; // begint als 'nog geen verbinding'
-
-      try {
-        client = new Paho.MQTT.Client(MQTT_URL, clientId);
-
-        client.onConnectionLost = onConnectionLost; // verbinding weggevallen
-        client.onMessageArrived = onMessageArrived; // nieuw bericht binnen
-
-        console.log("Verbinden met MQTT broker...");
-        client.connect({
-          onSuccess: onConnect, // gelukt -> deze functie draait
-          onFailure: onConnectFailure, // mislukt -> deze functie draait
-        });
-      } catch (fout) {
-        // Een fout adres mag de app NOOIT stilleggen:
-        // duidelijke melding, knoppen blijven gewoon werken.
-        statusBar.innerText = "MQTT: Fout in instellingen";
-        statusBar.style.color = "#ff3333";
-        console.error(
-          "MQTT kon niet starten: " +
-            fout.message +
-            " — controleer de broker-URL via de knop 'MQTT Instellingen'.",
-        );
+      // Getallen van marker 1 en 2, in markervolgorde. Breid uit bij nieuwe vragen.
+      const GEHEIME_CODE = "48";
+      const codeInput = document.getElementById("geheime-code");
+      const codeResultaat = document.getElementById("code-resultaat");
+      // Voor GitHub Pages: vervang dit door het HTTPS-adres van je Pi.
+      const NODE_RED_URL = "http://iot08:1880";
+      const nodeRedStatus = document.getElementById("node-red-status");
+      let verstuurd = false;
+      let versturen = false;
+      function nodeRedBereikbaarViaHttps() {
+        if (location.protocol === "https:" && new URL(NODE_RED_URL).protocol !== "https:") {
+          nodeRedStatus.textContent = "Node-RED: stel een HTTPS-adres in voor gebruik vanaf deze HTTPS-website.";
+          return false;
+        }
+        return true;
       }
-
-      // Hulpfunctie: is er een werkende verbinding?
-      // (de knoppen van opdracht 6 gebruiken dit)
-      function isVerbonden() {
-        return client !== null && client.isConnected();
-      }
-
-      // --- Wat gebeurt er als de verbinding LUKT? ---
-      function onConnect() {
-        statusBar.innerText = "MQTT: Verbonden (" + GROEPS_ID + ")";
-        statusBar.style.color = "#00ffcc";
-        client.subscribe(TOPIC_SENSOR); // abonneer: vanaf nu horen we alles op dit topic
-        console.log("Geabonneerd op topic: " + TOPIC_SENSOR);
-      }
-
-      // --- Wat gebeurt er als de verbinding MISLUKT? ---
-      function onConnectFailure(responseObject) {
-        console.error("MQTT fout: " + responseObject.errorMessage);
-        statusBar.innerText = "MQTT: Verbinding mislukt";
-        statusBar.style.color = "#ff3333";
-      }
-
-      // --- Wat gebeurt er als de verbinding WEGVALT? ---
-      function onConnectionLost(responseObject) {
-        if (responseObject.errorCode !== 0) {
-          statusBar.innerText = "MQTT: Verbinding verloren";
-          statusBar.style.color = "#ff9900";
-          setTimeout(function () {
-            // na 3 seconden opnieuw proberen
-            statusBar.innerText = "MQTT: Opnieuw verbinden...";
-            client.connect({
-              onSuccess: onConnect,
-              onFailure: onConnectFailure,
-            });
-          }, 3000);
+      async function controleerNodeRed() {
+        if (!nodeRedBereikbaarViaHttps()) return;
+        try {
+          const response = await fetch(NODE_RED_URL + "/puzzle-ar/status", {signal: AbortSignal.timeout(5000)});
+          if (!response.ok) throw new Error();
+          const status = await response.json();
+          nodeRedStatus.textContent = status.mqttConnected ? "Node-RED en MQTT verbonden" : "Node-RED bereikbaar; MQTT nog niet verbonden";
+        } catch {
+          nodeRedStatus.textContent = "Node-RED niet bereikbaar. Controleer iot08:1880 en of de flow is gedeployed.";
         }
       }
-
-      // --- Wat gebeurt er bij elk NIEUW BERICHT op het topic? ---
-      function onMessageArrived(message) {
-        const payload = message.payloadString; // de ontvangen tekst (bijv. "21.5")
-        sensorWaarde.innerText = payload; // toon hem in het paneel
-        stap4Tekst.setAttribute("value", payload);
-
-        console.log(
-          "Nieuwe data op [" + message.destinationName + "]: " + payload,
-        );
-            // [OPDRACHT 5] pas de kleur van het blok aan
-      pasKleurAan(payload);
+      async function stuurNaarNodeRed(code) {
+        if (verstuurd || versturen || !nodeRedBereikbaarViaHttps()) return;
+        versturen = true;
+        nodeRedStatus.textContent = "Antwoord naar Node-RED sturen...";
+        try {
+          // Formulierdata voorkomt een JSON-CORS-preflight voor dit verzoek.
+          const response = await fetch(NODE_RED_URL + "/puzzle-ar", {
+            method: "POST",
+            body: new URLSearchParams({code}),
+            signal: AbortSignal.timeout(8000),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || "Versturen mislukt");
+          verstuurd = true;
+          nodeRedStatus.textContent = "Node-RED heeft je antwoord geaccepteerd en aan MQTT doorgegeven.";
+        } catch (error) {
+          nodeRedStatus.textContent = "Niet verstuurd: " + error.message + ". Klik opnieuw op Check.";
+        } finally {
+          versturen = false;
+        }
       }
-
-          // ============================================================
-    // [OPDRACHT 5] De kleur van het blok volgt de waarde
-    // PAS HIERONDER JE EIGEN DREMPELS AAN!
-    // ============================================================
-    const GRENS_GROEN = 22;   // onder deze waarde: groen ("alles prima")
-    const GRENS_ROOD  = 27;   // boven deze waarde: rood ("alarm!") — ertussen: geel
-
-    function pasKleurAan(waardeAlsTekst) {
-      const waarde = parseFloat(waardeAlsTekst);  // tekst -> getal, zodat we kunnen vergelijken
-      if (isNaN(waarde)) {                        // geen getal? dan niks doen
-        return;
-      }
-      if (waarde < GRENS_GROEN) {
-        stap4Blok.setAttribute("color", "#00ff00");   // groen
-      } else if (waarde > GRENS_ROOD) {
-        stap4Blok.setAttribute("color", "#ff0000");   // rood
-      } else {
-        stap4Blok.setAttribute("color", "#ffff00");   // geel
-      }
-    }
-      const publishInput = document.getElementById("publish-input");
-      document
-        .getElementById("publish-btn")
-        .addEventListener("click", function () {
-          const tekst = publishInput.value.trim();
-          if (!tekst || !isVerbonden()) return;
-          client.send(TOPIC_SENSOR, tekst, 0, false);
-          publishInput.value = "";
-        });
-
-      const stap2Kubus = document.getElementById("stap2-kubus");
-      const btnGroen = document.getElementById("btn-groen");
-      const btnRood = document.getElementById("btn-rood");
-
-      btnGroen.addEventListener("click", function () {
-        stap2Kubus.setAttribute("color", "#00ff00");
+      controleerNodeRed();
+      document.getElementById("code-formulier").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const code = codeInput.value.trim();
+        if (!code) {
+          codeResultaat.textContent = "Vul eerst de geheime code in.";
+          codeResultaat.style.color = "#ffd28a";
+          codeInput.focus();
+          return;
+        }
+        const goed = code === GEHEIME_CODE;
+        codeResultaat.textContent = goed ? "Goed! Je hebt de geheime code gevonden!" : "Deze code klopt nog niet. Probeer opnieuw.";
+        codeResultaat.style.color = goed ? "#86efac" : "#fca5a5";
+        if (goed) stuurNaarNodeRed(code);
       });
-
-      btnRood.addEventListener("click", function () {
-        stap2Kubus.setAttribute("color", "#ff0000");
-      });
+      codeInput.addEventListener("input", () => { codeResultaat.textContent = ""; });
     </script>
   </body>
 </html>
+
+
