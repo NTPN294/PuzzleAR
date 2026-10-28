@@ -17,7 +17,8 @@
     <script src="js/ar-dance.js"></script>
     <script src="js/cat-config.js"></script>
     <script src="js/cat-game.js"></script>
-    <script src="js/station-ui.js"></script>
+    <script src="js/station-ui.js?v=marker-resume-3"></script>
+    <script src="js/games-56.js?v=cup-resume-4"></script>
     <link rel="stylesheet" href="css/partner-puzzles.css" />
 
     <script>
@@ -627,6 +628,23 @@
     </form>
     <div id="dance-reward" class="reward-box" hidden><strong>Goed gedaan! 🎉</strong><p id="dance-code"></p></div>
   </section>
+<section id="puzzle-5" class="puzzle-card extra-card" hidden aria-labelledby="title-5">
+  <header class="puzzle-heading"><h2 id="title-5">Vraag 5: Chimpanzini Bananini</h2></header>
+  <p class="extra-progress" id="progress-5"></p>
+  <p id="status-5" class="feedback" role="status" aria-live="polite"></p>
+  <div id="banana-sum" class="banana-sum" aria-label="Rekensom"></div>
+  <div class="extra-choices"><button type="button" data-choice="1" disabled>Banaan 1</button><button type="button" data-choice="2" disabled>Banaan 2</button><button type="button" data-choice="3" disabled>Banaan 3</button></div>
+  <div class="puzzle-actions"><button type="button" id="replay-5">Nog eens kijken</button></div>
+  <div id="reward-5" class="reward-box" hidden></div>
+</section>
+<section id="puzzle-6" class="puzzle-card extra-card" hidden aria-labelledby="title-6">
+  <header class="puzzle-heading"><h2 id="title-6">Vraag 6: Cappuccino Assassino</h2></header>
+  <p class="extra-progress" id="progress-6"></p>
+  <p id="status-6" class="feedback" role="status" aria-live="polite"></p>
+  <div class="extra-choices"><button type="button" data-choice="1" disabled>Beker 1</button><button type="button" data-choice="2" disabled>Beker 2</button><button type="button" data-choice="3" disabled>Beker 3</button></div>
+  <div class="puzzle-actions"><button type="button" id="replay-6">Nog eens kijken</button></div>
+  <div id="reward-6" class="reward-box" hidden></div>
+</section>
     <a-scene
       embedded
       arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3; debugUIEnabled: false;"
@@ -687,11 +705,86 @@
     </a-entity>
   </a-entity>
 </a-marker>
+<a-marker id="marker-5" type="barcode" value="5" emitevents="true" extra-puzzle="kind: 5">
+  <a-entity rotation="-65 0 0" position="0 0.05 0.4">
+    <!-- Chimpanzini Bananini: apengezicht in een open bananenschil. -->
+    <a-entity id="chimpanzini">
+      <a-sphere position="0 0.77 0.17" scale="0.17 0.34 0.06" color="#fff2aa"></a-sphere>
+      <a-cylinder position="-0.13 0.13 0.03" radius="0.045" height="0.26" color="#754620"></a-cylinder>
+      <a-cylinder position="0.13 0.13 0.03" radius="0.045" height="0.26" color="#754620"></a-cylinder>
+      <a-sphere position="-0.14 0.02 0.1" scale="0.085 0.045 0.13" color="#9c693e"></a-sphere>
+      <a-sphere position="0.14 0.02 0.1" scale="0.085 0.045 0.13" color="#9c693e"></a-sphere>
+      <a-torus position="0.22 0.45 -0.12" radius="0.20" radius-tubular="0.035" arc="250" rotation="10 35 -40" color="#754620"></a-torus>
+      <a-sphere position="0 0.7 0" scale="0.26 0.65 0.22" color="#ffe04f"></a-sphere>
+      <a-cone position="0 0.16 0" radius-bottom="0.055" radius-top="0.19" height="0.28" color="#d3a222"></a-cone>
+      <a-cylinder position="0 0.015 0" radius="0.055" height="0.08" color="#63401e"></a-cylinder>
+      <!-- Drie opengekrulde schillen rond de schouders. -->
+      <a-entity position="-0.18 0.95 0" rotation="0 0 55">
+        <a-sphere position="0 -0.24 0" scale="0.09 0.33 0.075" color="#ffcf24"></a-sphere>
+        <a-sphere position="0 -0.24 0.045" scale="0.065 0.27 0.04" color="#fff2aa"></a-sphere>
+      </a-entity>
+      <a-entity position="0.18 0.95 0" rotation="0 0 -55">
+        <a-sphere position="0 -0.24 0" scale="0.09 0.33 0.075" color="#ffcf24"></a-sphere>
+        <a-sphere position="0 -0.24 0.045" scale="0.065 0.27 0.04" color="#fff2aa"></a-sphere>
+      </a-entity>
+      <a-sphere position="0 0.84 -0.15" scale="0.12 0.3 0.08" rotation="-35 0 0" color="#e5b625"></a-sphere>
+      <a-sphere position="0 1.18 0" radius="0.28" color="#754620"></a-sphere>
+      <a-sphere position="-0.28 1.19 0" radius="0.12" color="#754620"></a-sphere>
+      <a-sphere position="0.28 1.19 0" radius="0.12" color="#754620"></a-sphere>
+      <a-sphere position="-0.29 1.19 0.065" radius="0.075" color="#c58b59"></a-sphere>
+      <a-sphere position="0.29 1.19 0.065" radius="0.075" color="#c58b59"></a-sphere>
+      <a-sphere position="-0.09 1.24 0.205" scale="0.13 0.15 0.10" color="#dbad78"></a-sphere>
+      <a-sphere position="0.09 1.24 0.205" scale="0.13 0.15 0.10" color="#dbad78"></a-sphere>
+      <a-sphere position="0 1.07 0.25" scale="0.17 0.10 0.11" color="#e2b985"></a-sphere>
+      <a-sphere position="-0.035 1.135 0.35" radius="0.012" color="#4a2814"></a-sphere>
+      <a-sphere position="0.035 1.135 0.35" radius="0.012" color="#4a2814"></a-sphere>
+      <a-sphere position="-0.095 1.24 0.285" radius="0.06" color="#fff9e4"></a-sphere>
+      <a-sphere position="0.095 1.24 0.285" radius="0.06" color="#fff9e4"></a-sphere>
+      <a-sphere position="-0.09 1.24 0.336" radius="0.027" color="#241508"></a-sphere>
+      <a-sphere position="0.09 1.24 0.336" radius="0.027" color="#241508"></a-sphere>
+      <a-sphere position="0 1.13 0.3" scale="0.08 0.055 0.055" color="#92562c"></a-sphere>
+      <a-torus position="0 1.09 0.3" radius="0.085" radius-tubular="0.009" arc="180" rotation="0 0 180" color="#492813"></a-torus>
+      <a-cylinder position="-0.28 0.68 0" radius="0.045" height="0.4" rotation="0 0 -25" color="#754620"></a-cylinder>
+      <a-cylinder position="0.28 0.68 0" radius="0.045" height="0.4" rotation="0 0 25" color="#754620"></a-cylinder>
+      <a-sphere position="-0.36 0.5 0" radius="0.065" color="#c58b59"></a-sphere>
+      <a-sphere position="0.36 0.5 0" radius="0.065" color="#c58b59"></a-sphere>
+    </a-entity>
+    <a-text id="banana-formula" value="" position="0 1.75 0.1" align="center" width="2.8" color="#fff0a0"></a-text>
+  </a-entity>
+</a-marker>
+<a-marker id="marker-6" type="barcode" value="6" emitevents="true" extra-puzzle="kind: 6">
+  <a-entity rotation="-65 0 0">
+    <a-entity id="coffee-runner" position="-0.95 0.08 0.35">
+      <a-entity id="coffee-model" gltf-model="models/cappuccino_assassino.glb" fit-coffee></a-entity>
+      <a-cylinder id="coffee-fallback" radius="0.12" height="0.3" color="#f2dfbf" position="0 0.15 0"></a-cylinder>
+    </a-entity>
+    <a-entity id="coffee-cups">
+      <a-entity position="-0.5 0.22 0">
+        <a-cylinder radius="0.18" height="0.4" open-ended="true" material="side: double" color="#f4f0e7"></a-cylinder>
+        <a-torus position="0 0.2 0" rotation="90 0 0" radius="0.18" radius-tubular="0.018" color="#decdb1"></a-torus>
+        <a-circle position="0 -0.17 0" rotation="-90 0 0" radius="0.175" color="#75452c"></a-circle>
+        <a-text value="1" position="0 0 0.185" align="center" color="#593a22" width="2"></a-text>
+      </a-entity>
+      <a-entity position="0 0.22 0">
+        <a-cylinder radius="0.18" height="0.4" open-ended="true" material="side: double" color="#f4f0e7"></a-cylinder>
+        <a-torus position="0 0.2 0" rotation="90 0 0" radius="0.18" radius-tubular="0.018" color="#decdb1"></a-torus>
+        <a-circle position="0 -0.17 0" rotation="-90 0 0" radius="0.175" color="#75452c"></a-circle>
+        <a-text value="2" position="0 0 0.185" align="center" color="#593a22" width="2"></a-text>
+      </a-entity>
+      <a-entity position="0.5 0.22 0">
+        <a-cylinder radius="0.18" height="0.4" open-ended="true" material="side: double" color="#f4f0e7"></a-cylinder>
+        <a-torus position="0 0.2 0" rotation="90 0 0" radius="0.18" radius-tubular="0.018" color="#decdb1"></a-torus>
+        <a-circle position="0 -0.17 0" rotation="-90 0 0" radius="0.175" color="#75452c"></a-circle>
+        <a-text value="3" position="0 0 0.185" align="center" color="#593a22" width="2"></a-text>
+      </a-entity>
+    </a-entity>
+  </a-entity>
+</a-marker>
       <a-entity camera></a-entity>
     </a-scene>
     <script>
-      // Getallen van marker 1 t/m 4, in markervolgorde.
-      const GEHEIME_CODE = "4825";
+      // Getallen van marker 1 t/m 6, in markervolgorde.
+      const GEHEIME_CODE = "482547";
       const codeInput = document.getElementById("geheime-code");
       const codeResultaat = document.getElementById("code-resultaat");
       const MQTT_URL = "wss://broker.emqx.io:8084/mqtt";

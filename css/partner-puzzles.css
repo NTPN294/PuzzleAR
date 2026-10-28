@@ -60,6 +60,9 @@
 .reward-box p { margin: 4px 0; }
 .puzzle-card[data-phase="error"] .feedback { color: #fca5a5; }
 #scan-hint { display: none; }
+.extra-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.extra-progress { color: #ffd28a; font-size: 12px; margin: 6px 0; }
+.banana-sum { color: #ffd28a; font-weight: 800; font-size: 25px; margin: 10px 0; letter-spacing: 1px; }
 @media (max-height: 500px) {
   .puzzle-card { bottom: 8px; max-height: calc(100dvh - 160px); padding: 10px; }
   .puzzle-card .puzzle-instruction { display: none; }
